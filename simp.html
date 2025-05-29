@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ball in Rotating Hexagon</title>
+  <style>
+    canvas {
+      background: #111;
+      display: block;
+      margin: 0 auto;
+      border: 2px solid white;
+    }
+  </style>
+</head>
+<body>
+<canvas id="canvas" width="600" height="600"></canvas>
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const center = { x: canvas.width / 2, y: canvas.height / 2 };
+const hexRadius = 200;
+let hexRotation = 0;
+let rotationSpeed = 0.01;
+
+const ball = {
+  x: center.x,
+  y: center.y - 50,
+  radius: 10,
+  vx: 0,
+  vy: 0,
+  gravity: 0.3,
+  bounce: 0.8,
+};
+
+// Convert degrees to radians
+function degToRad(deg) {
+  return deg * Math.PI / 180;
+}
+
+// Generate hexagon vertices
+function getHexagonPoints(cx, cy, radius, rotation) {
+  const points = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = degToRad(60 * i) + rotation;
+    points.push({
+      x: cx + radius * Math.cos(angle),
+      y: cy + radius * Math.sin(angle)
+    });
+  }
+  return points;
+}
+
+// Handle collision of ball with hexagon walls
+function containBallInHexagon(ball, points) {
+  for (let i = 0; i < points.length; i++) {
+    const p1 = points[i];
+    const p2 = points[(i + 1) % points.length];
+
+    const edge = { x: p2.x - p1.x, y: p2.y - p1.y };
+    const edgeLength = Math.hypot(edge.x, edge.y);
+    const normal = { x: -edge.y / edgeLength, y: edge.x / edgeLength };
+
+    const relBall = { x: ball.x - p1.x, y: ball.y - p1.y };
+    const dist = relBall.x * normal.x + relBall.y * normal.y;
+
+    if (dist > -ball.radius) {
+      // Project ball out
+      const overlap = dist + ball.radius;
+      ball.x -= normal.x * overlap;
+      ball.y -= normal.y * overlap;
+
+      // Reflect velocity
+      const velDot = ball.vx * normal.x + ball.vy * normal.y;
+      ball.vx -= 2 * velDot * normal.x;
+      ball.vy -= 2 * velDot * normal.y;
+
+      // Apply bounce
+      ball.vx *= ball.bounce;
+      ball.vy *= ball.bounce;
+    }
+  }
+}
+
+function update() {
+  hexRotation += rotationSpeed;
+
+  // Rotated gravity
+  const gX = Math.sin(hexRotation) * ball.gravity;
+  const gY = Math.cos(hexRotation) * ball.gravity;
+
+  ball.vx += gX;
+  ball.vy += gY;
+
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  const hexPoints = getHexagonPoints(center.x, center.y, hexRadius, hexRotation);
+  containBallInHexagon(ball, hexPoints);
+}
+
+function drawHexagon(points) {
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawBall() {
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fillStyle = "red";
+  ctx.fill();
+}
+
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  update();
+  const hexPoints = getHexagonPoints(center.x, center.y, hexRadius, hexRotation);
+  drawHexagon(hexPoints);
+  drawBall();
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
